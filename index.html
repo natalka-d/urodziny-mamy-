@@ -7,46 +7,61 @@
     <style>
         :root {
             --primary-color: #ad1457;
-            --bg-glass: rgba(255, 255, 255, 0.9);
+            --bg-glass: rgba(255, 255, 255, 0.95);
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            text-align: center;
+            margin: 0;
+            padding: 10px;
             background-image: url('rm321-baifernn-01-e.jpg');
             background-size: cover;
             background-attachment: fixed;
             background-position: center;
-            margin: 0;
-            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Centrowanie wszystkiego w poziomie */
+            min-height: 100vh;
+        }
+
+        #game-ui {
+            width: 100%;
+            display: flex;
+            justify-content: center;
         }
 
         #game-wrapper {
             background: var(--bg-glass);
-            display: inline-block;
             padding: 15px;
             border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             border: 2px solid white;
-            max-width: 95vw;
+            width: 100%;
+            max-width: 450px; /* Maksymalna szerokość na komputerze */
             box-sizing: border-box;
         }
 
+        h1 { color: var(--primary-color); font-size: 1.4em; margin: 10px 0; }
+
+        /* KONTENER SIATKI - TO TU BYŁ PROBLEM */
         .grid {
             display: grid;
-            gap: 4px;
-            background-color: #ccc;
-            border: 4px solid #bbb;
+            gap: 2px; /* Mniejszy odstęp na telefonie */
+            background-color: #bbb;
+            border: 3px solid #bbb;
             margin: 15px auto;
-            padding: 4px;
+            padding: 2px;
             border-radius: 8px;
-            width: fit-content;
+            /* To wyśrodkuje siatkę i sprawi, że nie wyjdzie poza wrapper */
+            width: fit-content; 
             max-width: 100%;
+            box-sizing: border-box;
         }
 
         .cell {
-            width: 8vw;
-            height: 8vw;
+            /* Automatyczne dopasowanie: 8.5% szerokości ekranu, ale nie więcej niż 40px */
+            width: 8.5vw;
+            height: 8.5vw;
             max-width: 40px;
             max-height: 40px;
             background-color: #eee;
@@ -55,8 +70,8 @@
             justify-content: center;
             font-weight: bold;
             cursor: pointer;
-            border-radius: 4px;
-            font-size: clamp(14px, 4vw, 20px);
+            border-radius: 2px;
+            font-size: clamp(12px, 4vw, 18px);
             user-select: none;
             box-sizing: border-box;
         }
@@ -65,16 +80,16 @@
         .cell.mine { background-color: #ffcdd2; }
         .cell.flag { background-color: #fff9c4; color: #d32f2f; }
 
-        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        .controls { display: flex; justify-content: center; gap: 8px; margin-top: 15px; }
         .mode-btn {
-            padding: 10px 15px;
+            padding: 10px 18px;
             border: 2px solid var(--primary-color);
             border-radius: 50px;
             background: white;
             color: var(--primary-color);
             cursor: pointer;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
         }
         .mode-btn.active { background: var(--primary-color); color: white; }
 
@@ -82,44 +97,38 @@
         .count-2 { color: #388E3C; }
         .count-3 { color: #D32F2F; }
         .count-4 { color: #7B1FA2; }
-        .count-5 { color: #FF6F00; }
 
         #custom-alert {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: white; padding: 25px; border-radius: 20px; z-index: 1000;
-            box-shadow: 0 0 100px rgba(0,0,0,0.5); width: 80%; max-width: 280px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.3); width: 85%; max-width: 280px;
         }
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
 
         #final-surprise {
             display: none; background: var(--bg-glass); padding: 20px; border-radius: 20px;
-            max-width: 95%; margin: 10px auto; border: 3px solid var(--primary-color);
+            width: 100%; max-width: 500px; border: 3px solid var(--primary-color);
         }
-        
-        /* Poprawka dla obrazków niespodzianek */
         #final-surprise img { 
             width: 100%; 
-            max-width: 400px; 
-            border-radius: 15px; 
+            height: auto;
+            border-radius: 10px; 
             margin-bottom: 10px; 
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
         }
         
-        .main-btn { background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .main-btn { background: var(--primary-color); color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="game-ui">
         <div id="game-wrapper">
-            <h1 style="color: var(--primary-color); font-size: 1.5em; margin-bottom: 5px;">Wyzwanie dla Mamy 🌸</h1>
-            <p style="font-size: 0.9em; margin-top: 0;">Rozwiąż zagadkę, aby odkryć niespodziankę!</p>
+            <h1>Wyzwanie dla Mamy 🌸</h1>
+            <p style="font-size: 0.9em; color: #555;">Odkryj wszystkie pola bez min, aby zobaczyć niespodziankę!</p>
             
             <div id="grid" class="grid"></div>
             
-            <p>Miny: <span id="mine-count">0</span> | Flagi: <span id="flag-count">0</span></p>
+            <p style="font-weight: bold;">Miny: <span id="mine-count">0</span> | Flagi: <span id="flag-count">0</span></p>
 
             <div class="controls">
                 <button id="btn-dig" class="mode-btn active" onclick="setMode('dig')">⛏️ Odkrywaj</button>
@@ -135,14 +144,14 @@
         <img src="6.jpg">
         <img src="7.jpg">
         <img src="9.jpg">
-        <p style="font-size: 1.3em; color: var(--primary-color); font-weight: bold;">Jesteś mistrzynią! Kocham Cię! ❤️</p>
+        <p style="font-size: 1.2em; color: var(--primary-color); font-weight: bold;">Jesteś mistrzynią! Kocham Cię! ❤️</p>
     </div>
 
     <div id="overlay"></div>
     <div id="custom-alert">
-        <h3 id="alert-title" style="margin-top: 0;"></h3>
-        <p id="alert-msg"></p>
-        <button class="main-btn" onclick="closeAlert()">OK!</button>
+        <h3 id="alert-title" style="margin-top: 0; color: var(--primary-color);"></h3>
+        <p id="alert-msg" style="margin-bottom: 20px;"></p>
+        <button class="main-btn" onclick="closeAlert()">Próbuję dalej!</button>
     </div>
 
     <script>
@@ -173,7 +182,9 @@
         function closeAlert() {
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('custom-alert').style.display = 'none';
-            if (gameOver || (revealedCount === (config[1].rows * config[1].cols) - config[1].mines && currentLvl === 2)) {
+            if (gameOver || (revealedCount === (config[currentLvl].rows * config[currentLvl].cols) - config[currentLvl].mines)) {
+                // Jeśli wygrana lv1, przechodzimy do lv2
+                if (!gameOver && currentLvl === 1) currentLvl = 2;
                 initGame();
             }
         }
@@ -183,16 +194,9 @@
             const gridEl = document.getElementById('grid');
             gridEl.innerHTML = '';
             
-            // POPRAWKA: Zamiast sztywnego 40px, używamy 1fr (jednostka elastyczna)
+            // Ustawiamy tylko liczbę kolumn, szerokość załatwi CSS (fit-content)
             gridEl.style.gridTemplateColumns = `repeat(${s.cols}, 1fr)`;
             
-            // Dynamiczne dopasowanie szerokości kontenera
-            if(window.innerWidth < 500) {
-                gridEl.style.width = "90vw";
-            } else {
-                gridEl.style.width = (s.cols * 42) + "px";
-            }
-
             grid = [];
             revealedCount = 0;
             gameOver = false;
@@ -239,8 +243,7 @@
                 cell.flagged = !cell.flagged;
                 cell.el.innerText = cell.flagged ? '🚩' : '';
                 cell.el.classList.toggle('flag');
-                let fCount = 0;
-                grid.flat().forEach(cc => { if(cc.flagged) fCount++; });
+                let fCount = grid.flat().filter(cc => cc.flagged).length;
                 document.getElementById('flag-count').innerText = fCount;
             } else {
                 if (cell.flagged) return;
@@ -248,7 +251,7 @@
                     gameOver = true;
                     cell.el.innerText = '💣';
                     cell.el.classList.add('mine');
-                    showAlert("Ojej!", "Trafiłaś na bombę! Spróbuj jeszcze raz ❤️");
+                    showAlert("Ups!", "Trafiłaś na bombę! Nie poddawaj się Mamo ❤️");
                 } else {
                     reveal(r, c);
                     checkWin();
@@ -277,12 +280,11 @@
             const s = config[currentLvl];
             if (revealedCount === (s.rows * s.cols) - s.mines) {
                 if (currentLvl === 1) {
-                    currentLvl = 2;
-                    showAlert("Brawo Mamo!", "To była rozgrzewka... Gotowa na poziom mistrzowski?");
+                    showAlert("Wspaniale!", "Poziom 1 ukończony! Czas na prawdziwe wyzwanie. Gotowa?");
                 } else {
                     document.getElementById('game-ui').style.display = 'none';
                     document.getElementById('final-surprise').style.display = 'block';
-                    window.scrollTo(0,0);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             }
         }
