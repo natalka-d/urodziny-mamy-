@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wyzwanie dla Mamy!</title>
+    <style>
+        :root {
+            --primary-color: #ad1457;
+            --accent-color: #fce4ec;
+            --bg-glass: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            text-align: center;
+            background-image: url('rm321-baifernn-01-e.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Kontener gry */
+        #game-wrapper {
+            background: var(--bg-glass);
+            display: inline-block;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            border: 2px solid white;
+            max-width: 95%;
+        }
+
+        h1 { color: var(--primary-color); margin-bottom: 10px; }
+        #status-text { font-size: 1.1em; margin-bottom: 20px; color: #444; }
+
+        /* Plansza */
+        .grid {
+            display: grid;
+            gap: 4px;
+            background-color: #ccc;
+            border: 4px solid #bbb;
+            margin: 0 auto 20px auto;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 18px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .cell.revealed { background-color: #fff; cursor: default; border: 1px solid #ddd; }
+        .cell.mine { background-color: #ffcdd2; }
+        .cell.flag { background-color: #fff9c4; color: #d32f2f; }
+        .cell:not(.revealed):hover { background-color: #e1f5fe; transform: scale(1.05); }
+
+        /* Przyciski sterowania */
+        .controls { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+        .mode-btn {
+            padding: 12px 20px;
+            border: 2px solid var(--primary-color);
+            border-radius: 50px;
+            background: white;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mode-btn.active { background: var(--primary-color); color: white; }
+
+        /* Customowe powiadomienia (Modal) */
+        #custom-alert {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 100px rgba(0,0,0,0.5);
+            z-index: 1000;
+            width: 300px;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        /* Sekcja końcowa */
+        #final-surprise {
+            display: none;
+            background: var(--bg-glass);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 600px;
+            margin: 20px auto;
+            border: 3px solid var(--primary-color);
+        }
+        #final-surprise img { width: 100%; border-radius: 15px; margin: 20px 0; }
+
+        button.main-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="game-wrapper">
+            <h1 id="title">Wyzwanie dla Mamy 🌸</h1>
+            <p id="status-text">Mamo, musisz rozwiązać tę zagadkę, aby odkryć niespodziankę!</p>
+            
+            <div class="controls">
+                <button id="btn-dig" class="mode-btn active" onclick="setMode('dig')">⛏️ Odkrywaj</button>
+                <button id="btn-flag" class="mode-btn" onclick="setMode('flag')">🚩 Flaga</button>
+            </div>
+
+            <div id="grid" class="grid"></div>
+            <p>Miny: <span id="mine-count">0</span> | Flagi: <span id="flag-count">0</span></p>
+        </div>
+    </div>
+
+    <div id="final-surprise">
+        <h2>🎉 WSZYSTKIEGO NAJLEPSZEGO MAMO! 🎉</h2>
+        <p>Jesteś absolutną mistrzynią! Życzę Ci tyle radości, ile pól udało Ci się odkryć!</p>
+        <img src="mama_i_ja.jpg" alt="Zdjęcie z Mamą">
+        <p style="font-size: 1.3em; color: var(--primary-color); font-weight: bold;">Kocham Cię najbardziej na świecie! ❤️</p>
+    </div>
+
+    <div id="overlay"></div>
+    <div id="custom-alert">
+        <h3 id="alert-title">Ups!</h3>
+        <p id="alert-msg"></p>
+        <button class="main-btn" onclick="closeAlert()">Próbuję dalej!</button>
+    </div>
+
+    <script>
+        const config = {
+            1: { rows: 5, cols: 5, mines: 3, text: "To dopiero początek... czy jesteś gotowa na prawdziwy test?" },
+            2: { rows: 10, cols: 10, mines: 15, text: "Udało się! Teraz czas na finałowe wyzwanie!" }
+        };
+
+        let currentLvl = 1;
+        let grid = [];
+        let gameOver = false;
+        let mode = 'dig';
+        let revealed = 0;
+        let flags = 0;
+
+        function setMode(m) {
+            mode = m;
+            document.getElementById('btn-dig').classList.toggle('active', m === 'dig');
+            document.getElementById('btn-flag').classList.toggle('active', m === 'flag');
+        }
+
+        function showAlert(title, msg) {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-msg').innerText = msg;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('custom-alert').style.display = 'block';
+        }
+
+        function closeAlert() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('custom-alert').style.display = 'none';
+            if (gameOver) initGame();
+        }
+
+        function initGame() {
+            const s = config[currentLvl];
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            gridEl.style.gridTemplateColumns = `repeat(${s.cols}, 40px)`;
+            grid = [];
+            revealed = 0;
+            flags = 0;
+            gameOver = false;
+            document.getElementById('flag-count').innerText = 0;
+            document.getElementById('mine-count').innerText = s.mines;
+
+            for (let r = 0; r < s.rows; r++) {
+                grid[r] = [];
+                for (let c = 0; c < s.cols; c++) {
+                    const el = document.createElement('div');
+                    el.className = 'cell';
+                    el.onclick = () => handleAction(r, c);
+                    el.oncontextmenu = (e) => { e.preventDefault(); toggleFlag(r, c); };
+                    gridEl.appendChild(el);
+                    grid[r][c] = { mine: false, revealed: false, flagged: false, count: 0, el: el };
+                }
+            }
+
+            let mPlaced = 0;
+            while (mPlaced < s.mines) {
+                let r = Math.floor(Math.random()*s.rows), c = Math.floor(Math.random()*s.cols);
+                if (!grid[r][c].mine) { grid[r][c].mine = true; mPlaced++; }
+            }
+
+            for (let r = 0; r < s.rows; r++) {
+                for (let c = 0; c < s.cols; c++) {
+                    if (grid[r][c].mine) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (grid[r+dr] && grid[r+dr][c+dc] && grid[r+dr][c+dc].mine) count++;
+                        }
+                    }
+                    grid[r][c].count = count;
+                }
+            }
+        }
+
+        function handleAction(r, c) {
+            if (gameOver || grid[r][c].revealed) return;
+            if (mode === 'flag') return toggleFlag(r, c);
+            if (grid[r][c].flagged) return;
+
+            if (grid[r][c].mine) {
+                grid[r][c].el.innerText = '💣';
+                grid[r][c].el.classList.add('mine');
+                gameOver = true;
+                showAlert("Ojej!", "Trafiłaś na bombę! Ale spokojnie Mamo, spróbuj jeszcze raz. ❤️");
+                return;
+            }
+            reveal(r, c);
+            checkWin();
+        }
+
+        function toggleFlag(r, c) {
+            const cell = grid[r][c];
+            if (cell.revealed) return;
+            cell.flagged = !cell.flagged;
+            cell.el.innerText = cell.flagged ? '🚩' : '';
+            cell.el.classList.toggle('flag');
+            flags += cell.flagged ? 1 : -1;
+            document.getElementById('flag-count').innerText = flags;
+        }
+
+        function reveal(r, c) {
+            if (!grid[r] || !grid[r][c] || grid[r][c].revealed || grid[r][c].flagged) return;
+            const cell = grid[r][c];
+            cell.revealed = true;
+            cell.el.classList.add('revealed');
+            revealed++;
+            if (cell.count > 0) {
+                cell.el.innerText = cell.count;
+                const colors = ['#1976D2', '#388E3C', '#D32F2F', '#7B1FA2', '#FF6F00'];
+                cell.el.style.color = colors[cell.count-1] || '#000';
+            } else {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) reveal(r+dr, c+dc);
+                }
+            }
+        }
+
+        function checkWin() {
+            const s = config[currentLvl];
+            if (revealed === (s.rows * s.cols) - s.mines) {
+                if (currentLvl === 1) {
+                    currentLvl = 2;
+                    showAlert("Wspaniale!", "To było tylko rozgrzewka przed prawdziwym wyzwaniem! Gotowa?");
+                } else {
+                    document.getElementById('game-wrapper').style.display = 'none';
+                    document.getElementById('final-surprise').style.display = 'block';
+                }
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
