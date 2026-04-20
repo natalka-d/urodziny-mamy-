@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wyzwanie dla Mamy!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-image: url('rm321-baifernn-01-e.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #game-container {
+            margin: 20px auto;
+            display: inline-block;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 2px solid #fce4ec;
+        }
+
+        .grid {
+            display: grid;
+            gap: 2px;
+            background-color: #bbb;
+            border: 3px solid #999;
+            margin: 15px auto;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            aspect-ratio: 1 / 1; 
+            background-color: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            font-size: 20px;
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        .cell.revealed { background-color: #fff; cursor: default; border: 1px solid #eee; }
+        .cell.mine { background-color: #ffcdd2; }
+        .cell.flag { background-color: #fff9c4; }
+
+        #controls { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .mode-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: 2px solid #ad1457;
+            border-radius: 30px;
+            cursor: pointer;
+            background: white;
+            color: #ad1457;
+            font-weight: bold;
+        }
+        .mode-btn.active { background: #ad1457; color: white; }
+
+        .count-1 { color: #1976D2; }
+        .count-2 { color: #388E3C; }
+        .count-3 { color: #D32F2F; }
+        .count-4 { color: #7B1FA2; }
+        .count-5 { color: #FF6F00; }
+
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
+        #custom-alert {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 30px; border-radius: 20px; z-index: 1000; border: 3px solid #ad1457;
+            min-width: 250px;
+        }
+
+        #surprise { display: none; max-width: 550px; margin: 20px auto; background: white; padding: 20px; border-radius: 20px; border: 3px solid #ad1457; }
+        #surprise img { width: 100%; border-radius: 15px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="main-ui">
+        <h1 style="color: #ad1457; text-shadow: 1px 1px white;">Wyzwanie dla Mamy 🌸</h1>
+        <p>Mamo, rozwiąż tę zagadkę, aby odkryć niespodziankę!</p>
+
+        <div id="game-container">
+            <div id="grid" class="grid"></div>
+            <p>Miny: <span id="mine-count">0</span> | Flagi: <span id="flag-count">0</span></p>
+            
+            <div id="controls">
+                <button id="btn-dig" class="mode-btn active" onclick="setMode('dig')">⛏️ Odkrywaj</button>
+                <button id="btn-flag" class="mode-btn" onclick="setMode('flag')">🚩 Flaga</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="surprise">
+        <h2>🎉 WSZYSTKIEGO NAJLEPSZEGO MAMO! 🎉</h2>
+        <img src="mama_i_ja.jpg" alt="Zdjęcie z Mamą">
+        <p style="font-size: 1.3em; color: #ad1457; font-weight: bold;">Jesteś mistrzynią! Kocham Cię! ❤️</p>
+    </div>
+
+    <div id="overlay"></div>
+    <div id="custom-alert">
+        <h3 id="alert-title"></h3>
+        <p id="alert-msg"></p>
+        <button onclick="closeAlert()" style="padding: 10px 20px; cursor:pointer; background: #ad1457; color:white; border:none; border-radius:5px;">Gram dalej!</button>
+    </div>
+
+    <script>
+        let config = { 1: { r: 5, c: 5, m: 3 }, 2: { r: 10, c: 10, m: 15 } };
+        let currentLvl = 1;
+        let grid = [];
+        let gameOver = false;
+        let mode = 'dig';
+
+        function setMode(m) {
+            mode = m;
+            document.getElementById('btn-dig').classList.toggle('active', m === 'dig');
+            document.getElementById('btn-flag').classList.toggle('active', m === 'flag');
+        }
+
+        function showAlert(title, msg) {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-msg').innerText = msg;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('custom-alert').style.display = 'block';
+        }
+
+        function closeAlert() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('custom-alert').style.display = 'none';
+            if (gameOver) initGame();
+        }
+
+        function initGame() {
+            const s = config[currentLvl];
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            gridEl.style.gridTemplateColumns = `repeat(${s.c}, 40px)`;
+            grid = [];
+            gameOver = false;
+            document.getElementById('flag-count').innerText = 0;
+            document.getElementById('mine-count').innerText = s.m;
+
+            for (let r = 0; r < s.r; r++) {
+                grid[r] = [];
+                for (let c = 0; c < s.c; c++) {
+                    const el = document.createElement('div');
+                    el.className = 'cell';
+                    el.onclick = () => handleAction(r, c);
+                    el.oncontextmenu = (e) => { e.preventDefault(); handleAction(r, c, true); };
+                    gridEl.appendChild(el);
+                    grid[r][c] = { mine: false, rev: false, flag: false, count: 0, el: el };
+                }
+            }
+
+            let p = 0;
+            while (p < s.m) {
+                let r = Math.floor(Math.random() * s.r), c = Math.floor(Math.random() * s.c);
+                if (!grid[r][c].mine) { grid[r][c].mine = true; p++; }
+            }
+
+            for (let r = 0; r < s.r; r++) {
+                for (let c = 0; c < s.c; c++) {
+                    if (grid[r][c].mine) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (grid[r+dr] && grid[r+dr][c+dc] && grid[r+dr][c+dc].mine) count++;
+                        }
+                    }
+                    grid[r][c].count = count;
+                }
+            }
+        }
+
+        function handleAction(r, c, forceFlag = false) {
+            if (gameOver || grid[r][c].rev) return;
+            const cell = grid[r][c];
+
+            if (mode === 'flag' || forceFlag) {
+                cell.flag = !cell.flag;
+                cell.el.innerText = cell.flag ? '🚩' : '';
+                cell.el.classList.toggle('flag');
+                let currentFlags = 0;
+                grid.flat().forEach(cell => { if(cell.flag) currentFlags++; });
+                document.getElementById('flag-count').innerText = currentFlags;
+            } else {
+                if (cell.flag) return;
+                if (cell.mine) {
+                    gameOver = true;
+                    cell.el.innerText = '💣';
+                    cell.el.classList.add('mine');
+                    showAlert("Ojej!", "Trafiłaś na bombę! Spróbuj jeszcze raz ❤️");
+                } else {
+                    reveal(r, c);
+                    checkWin(); // Sprawdzenie po kliknięciu
+                }
+            }
+        }
+
+        function reveal(r, c) {
+            if (!grid[r] || !grid[r][c] || grid[r][c].rev || grid[r][c].flag) return;
+            const cell = grid[r][c];
+            cell.rev = true;
+            cell.el.classList.add('revealed');
+            
+            if (cell.count > 0) {
+                cell.el.innerText = cell.count;
+                cell.el.classList.add('count-' + cell.count);
+            } else {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) reveal(r + dr, c + dc);
+                }
+            }
+        }
+
+        function checkWin() {
+            const s = config[currentLvl];
+            let hiddenSafeCells = 0;
+            for (let r = 0; r < s.r; r++) {
+                for (let c = 0; c < s.c; c++) {
+                    if (!grid[r][c].mine && !grid[r][c].rev) hiddenSafeCells++;
+                }
+            }
+
+            // Dodatkowy warunek: jeśli gra nie jest przegrana i nie ma już bezpiecznych pól do odkrycia
+            if (!gameOver && hiddenSafeCells === 0) {
+                if (currentLvl === 1) {
+                    currentLvl = 2;
+                    showAlert("Świetnie!", "Mamo, to była tylko rozgrzewka. Czas na finałowe wyzwanie!");
+                    // Inicjalizacja nastąpi po zamknięciu alertu (funkcja closeAlert)
+                } else {
+                    document.getElementById('main-ui').style.display = 'none';
+                    document.getElementById('surprise').style.display = 'block';
+                }
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
