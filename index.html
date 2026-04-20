@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urodzinowe Wyzwanie dla Mamy!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            /* TŁO Z TWOJĄ GRAFIKĄ */
+            background-image: url('rm321-baifernn-01-e.jpg'); /* Upewnij się, że plik jest w tym samym folderze */
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2 { color: #ad1457; text-shadow: 1px 1px 2px white; }
+
+        /* Kontener gry - biały, lekko przezroczysty, żeby tło nie przeszkadzało */
+        #game-container {
+            margin: 20px auto;
+            display: inline-block;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 2px solid #fce4ec;
+        }
+
+        .grid {
+            display: grid;
+            gap: 2px;
+            background-color: #d1d1d1; /* Kolor przerw między polami */
+            border: 3px solid #bbb;
+            margin: 15px auto;
+        }
+
+        .cell {
+            width: 35px; /* Nieco większe pola dla wygody */
+            height: 35px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            font-size: 16px;
+            transition: background-color 0.2s;
+            user-select: none; /* Zapobiega zaznaczaniu tekstu przy szybkim klikaniu */
+        }
+
+        .cell:not(.revealed):hover { background-color: #e1f5fe; } /* Jasnoniebieski hover */
+
+        .cell.revealed { background-color: #fff; cursor: default; }
+        .cell.mine { background-color: #ffcdd2; }
+        .cell.flag { background-color: #fff9c4; color: #f44336; } /* Żółte tło dla flagi */
+
+        /* Panel sterowania (Przyciski trybu) */
+        #controls { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+
+        .mode-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: 2px solid #ad1457;
+            border-radius: 30px;
+            cursor: pointer;
+            background-color: white;
+            color: #ad1457;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-btn:hover { background-color: #fce4ec; }
+
+        /* Styl dla aktywnego przycisku trybu */
+        .mode-btn.active {
+            background-color: #ad1457;
+            color: white;
+            box-shadow: 0 4px 10px rgba(173, 20, 87, 0.4);
+        }
+
+        #mine-stats { font-size: 1.1em; margin-top: 10px; color: #555; }
+
+        #surprise {
+            display: none;
+            max-width: 550px;
+            margin: 30px auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            animation: fadeIn 2s;
+            border: 3px solid #ad1457;
+        }
+
+        #surprise img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover; /* Przycina zdjęcie, jeśli jest za długie */
+            border-radius: 15px;
+            border: 5px solid white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin: 15px 0;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <h1>🌸 Saper Urodzinowy 🌸</h1>
+    <h2 id="level-title">Poziom 1: Rozgrzewka</h2>
+    <p id="instructions">Użyj przycisków na dole, aby wybrać czy chcesz odkrywać pole czy postawić flagę.</p>
+
+    <div id="game-container">
+        <div id="grid" class="grid"></div>
+        
+        <div id="mine-stats">
+            Miny: <span id="mine-count">0</span> | Flagi: <span id="flag-count">0</span>
+        </div>
+
+        <div id="controls">
+            <button id="btn-dig" class="mode-btn active" onclick="setMode('dig')">
+                <span>⛏️</span> Odkrywaj
+            </button>
+            <button id="btn-flag" class="mode-btn" onclick="setMode('flag')">
+                <span>🚩</span> Stawiaj Flagę
+            </button>
+        </div>
+    </div>
+
+    <div id="surprise">
+        <h2>🎉 WSZYSTKIEGO NAJLEPSZEGO MAMO! 🎉</h2>
+        <p>Jesteś mistrzynią logiki! Skoro poradziłaś sobie z tym wyzwaniem, to nic Cię w tym roku nie zatrzyma!</p>
+        <img src="mama_i_ja.jpg" alt="Nasze wspólne zdjęcie">
+        <p style="font-style: italic; margin-top: 10px; font-size: 1.2em; color: #ad1457;">Kocham Cię!</p>
+    </div>
+
+    <script>
+        let config = {
+            lvl1: { rows: 5, cols: 5, mines: 3 },
+            lvl2: { rows: 12, cols: 12, mines: 25 }
+        };
+
+        let currentLevel = 1;
+        let grid = [];
+        let revealedCount = 0;
+        let gameOver = false;
+        let flags = 0;
+        let currentMode = 'dig'; // 'dig' lub 'flag'
+
+        const gridElement = document.getElementById('grid');
+
+        // Funkcja zmieniająca tryb (Kopanie / Flaga)
+        function setMode(mode) {
+            currentMode = mode;
+            // Aktualizacja wyglądu przycisków
+            document.getElementById('btn-dig').classList.toggle('active', mode === 'dig');
+            document.getElementById('btn-flag').classList.toggle('active', mode === 'flag');
+        }
+
+        function initGame() {
+            const settings = currentLevel === 1 ? config.lvl1 : config.lvl2;
+            gridElement.innerHTML = '';
+            // Dostosowanie wielkości siatki
+            gridElement.style.gridTemplateColumns = `repeat(${settings.cols}, 35px)`;
+            grid = [];
+            revealedCount = 0;
+            gameOver = false;
+            flags = 0;
+            document.getElementById('flag-count').innerText = flags;
+            document.getElementById('mine-count').innerText = settings.mines;
+            setMode('dig'); // Zawsze zaczynaj w trybie kopania
+
+            // Tworzenie pustej siatki
+            for (let r = 0; r < settings.rows; r++) {
+                grid[r] = [];
+                for (let c = 0; c < settings.cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    // GŁÓWNE KLIKNIĘCIE (obsługuje oba tryby w zależności od wyboru)
+                    cell.addEventListener('click', () => handleCellClick(r, c));
+                    
+                    // Prawy klik nadal działa jako skrót do flagi dla tradycjonalistów
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        toggleFlag(r, c);
+                    });
+                    
+                    gridElement.appendChild(cell);
+                    grid[r][c] = { mine: false, revealed: false, flagged: false, count: 0, element: cell };
+                }
+            }
+
+            // Losowanie min
+            let minesPlaced = 0;
+            while (minesPlaced < settings.mines) {
+                let r = Math.floor(Math.random() * settings.rows);
+                let c = Math.floor(Math.random() * settings.cols);
+                if (!grid[r][c].mine) {
+                    grid[r][c].mine = true;
+                    minesPlaced++;
+                }
+            }
+
+            // Liczenie sąsiadów
+            for (let r = 0; r < settings.rows; r++) {
+                for (let c = 0; c < settings.cols; c++) {
+                    if (grid[r][c].mine) continue;
+                    let count = 0;
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (grid[r + dr] && grid[r + dr][c + dc] && grid[r + dr][c + dc].mine) count++;
+                        }
+                    }
+                    grid[r][c].count = count;
+                }
+            }
+        }
+
+        // Główna funkcja logiki kliknięcia
+        function handleCellClick(r, c) {
+            if (gameOver || grid[r][c].revealed) return;
+
+            if (currentMode === 'flag') {
+                toggleFlag(r, c);
+            } else {
+                // Tryb kopania (dig)
+                if (grid[r][c].flagged) return; // Nie kopiemy tam gdzie jest flaga
+
+                if (grid[r][c].mine) {
+                    revealMines();
+                    alert("Ojej! Wybuchło! Ale spokojnie Mamo, spróbuj jeszcze raz! ❤️");
+                    initGame();
+                    return;
+                }
+                revealCell(r, c);
+                checkWin();
+            }
+        }
+
+        // Logika stawiania/usuwania flagi
+        function toggleFlag(r, c) {
+            if (gameOver || grid[r][c].revealed) return;
+            
+            grid[r][c].flagged = !grid[r][c].flagged;
+            grid[r][c].element.classList.toggle('flag');
+            grid[r][c].element.innerText = grid[r][c].flagged ? '🚩' : '';
+            flags += grid[r][c].flagged ? 1 : -1;
+            document.getElementById('flag-count').innerText = flags;
+        }
+
+        function revealCell(r, c) {
+            if (!grid[r] || !grid[r][c] || grid[r][c].revealed || grid[r][c].flagged) return;
+
+            grid[r][c].revealed = true;
+            grid[r][c].element.classList.add('revealed');
+            revealedCount++;
+
+            if (grid[r][c].count > 0) {
+                grid[r][c].element.innerText = grid[r][c].count;
+                // Kolory dla cyferek (opcjonalne)
+                const colors = ['#1976D2', '#388E3C', '#D32F2F', '#7B1FA2', '#FF6F00'];
+                grid[r][c].element.style.color = colors[grid[r][c].count - 1] || 'black';
+            } else {
+                // Flood fill dla pustych pól
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        revealCell(r + dr, c + dc);
+                    }
+                }
+            }
+        }
+
+        function revealMines() {
+            grid.flat().forEach(cell => {
+                if (cell.mine) {
+                    cell.element.classList.add('mine');
+                    cell.element.innerText = '💣';
+                }
+            });
+            gameOver = true;
+        }
+
+        function checkWin() {
+            const settings = currentLevel === 1 ? config.lvl1 : config.lvl2;
+            if (revealedCount === (settings.rows * settings.cols) - settings.mines) {
+                gameOver = true;
+                if (currentLevel === 1) {
+                    alert("Brawo Mamo! To była tylko rozgrzewka. Teraz zaczyna się prawdziwe wyzwanie!");
+                    currentLevel = 2;
+                    document.getElementById('level-title').innerText = "Poziom 2: Wyzwanie dla Ekspertki";
+                    initGame();
+                } else {
+                    // WYGRANA KOŃCOWA
+                    document.getElementById('game-container').style.display = 'none';
+                    document.getElementById('level-title').style.display = 'none';
+                    document.getElementById('instructions').style.display = 'none';
+                    document.getElementById('surprise').style.display = 'block';
+                    // Przewiń do góry, żeby zobaczyć życzenia
+                    window.scrollTo(0, 0);
+                }
+            }
+        }
+
+        // Start gry
+        initGame();
+    </script>
+</body>
+</html>
