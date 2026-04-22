@@ -156,8 +156,8 @@
 
     <div id="game-ui">
         <div id="game-wrapper">
-            <h1>Wyzwanie dla Mamy 🌸</h1>
-            <p style="font-size: 0.9em; color: #555; margin: 0;">Rozwiąż zagadkę dla niespodzianki!</p>
+            <h1>PROTOKÓŁ: NIESPODZIANKA</h1>
+            <p style="font-size: 0.9em; color: #555; margin: 0;">Wykryto nieautoryzowaną próbę dostępu do prezentu. System wymaga potwierdzenia najwyższych kompetencji logicznych.</p>
             <div id="grid" class="grid"></div>
             <p style="font-weight: bold; margin: 10px 0;">Miny: <span id="mine-count">0</span> | Flagi: <span id="flag-count">0</span></p>
             <div class="controls">
@@ -180,7 +180,7 @@
         <div id="gift-box" onclick="openGift()">🎁</div>
 
         <div id="voucher-container">
-            <h3 style="color: var(--primary-color);">TADAAA! Mamy coś dla Ciebie! 🎟️</h3>
+            <h3 style="color: var(--primary-color);">TADAAA! Mam coś dla Ciebie! 🎟️</h3>
             <img src="bon.jpg" alt="Bon Prezent Marzeń">
             <p style="font-size: 1.2em; color: var(--primary-color); font-weight: bold;">Kochamy Cię! ❤️</p>
         </div>
@@ -323,7 +323,7 @@
             const s = config[currentLvl];
             if (revealedCount === (s.rows * s.cols) - s.mines) {
                 if (currentLvl === 1) {
-                    showAlert("Super!", "Pierwszy etap za Tobą! Gotowa na finał?");
+                    showAlert("Super!", "To była dopiero rozgrzewka, mam nadzieję że jestes gotowa na prawdziwe wyzwanie.");
                 } else {
                     document.getElementById('game-ui').style.display = 'none';
                     document.getElementById('final-surprise').style.display = 'block';
